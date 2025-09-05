@@ -34,8 +34,8 @@ GLUE_TASK = ["cola", "mnli", "mrpc", "qnli",
 parser = argparse.ArgumentParser()
 parser.add_argument("--task", type=str, default="qnli",
                     choices=GLUE_TASK, help="choose dataset in GLUE benchmark")
-parser.add_argument("--method", type=str, default="MyLoRA", choices=[
-                    "MyLoRA", "LoRA", "DoRA", "PiSSA"], help="Choose which LoRA method to train")  # 后期修改成dislora
+parser.add_argument("--method", type=str, default="DisLoRA", choices=[
+                    "DisLoRA", "LoRA", "DoRA", "PiSSA"], help="Choose which LoRA method to train") 
 parser.add_argument("--lr", type=float, default=10e-4,
                     help="Choose learning rate")
 parser.add_argument("--r", type=int, default=16, help="Choose Lora rank")
@@ -59,7 +59,7 @@ elif args.task in ["mnli"]:
     num_labels = 3
 elif args.task in ["stsb"]:
     num_labels = 1
-model_name = "microsoft/deberta-v3-base"  # 修改模型名称
+model_name = "microsoft/deberta-v3-base"  
 cache_dir = "./huggingface"
 
 tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
@@ -132,8 +132,8 @@ def collate_fn(batch):
     attention_masks_padded = pad_sequence([torch.tensor(mask) for mask in attention_masks],
                                           batch_first=True,
                                           padding_value=0)
-    # 修改标签处理方式
-    labels_tensor = torch.tensor(labels)  # 移除 unsqueeze(1)
+  
+    labels_tensor = torch.tensor(labels) 
 
     return {
         'input_ids': input_ids_padded,
@@ -168,7 +168,7 @@ if args.method in ['LoRA', 'DoRA', 'PiSSA']:
     model = get_peft_model(model, config)
     model.train()
 
-elif args.method == 'MyLoRA':
+elif args.method == 'DisLoRA':
     config = Direc_config(
         target_modules=["query_proj", "key_proj", "value_proj"],
         r=args.r,
@@ -199,20 +199,20 @@ def compute_metrics(eval_pred: EvalPrediction):
     labels = eval_pred.label_ids
 
     if args.task == "stsb":
-        # STSB 是回归任务，直接使用预测值
+       
         predictions = logits.squeeze()
     else:
-        # 其他任务是分类任务
+        
         predictions = np.argmax(logits, axis=-1)
 
-    # 使用GLUE官方评估方法
+   
     glue_metric = load('glue', args.task)
     results = glue_metric.compute(predictions=predictions, references=labels)
 
     return results
 
 
-# 修改trainer的创建
+
 if args.method in ["LoRA", "DoRA", "PiSSA"]:
     training_args = TrainingArguments(
         output_dir="./cola_deberta_lora",
@@ -235,10 +235,10 @@ if args.method in ["LoRA", "DoRA", "PiSSA"]:
         eval_dataset=transformed_ds["validation"],
         data_collator=collate_fn,
         tokenizer=tokenizer,
-        compute_metrics=compute_metrics,  # 添加compute_metrics
+        compute_metrics=compute_metrics,  
     )
 
-elif args.method == "MyLoRA":
+elif args.method == "DisLoRA":
     training_args = Direc_TrainingArguments(
         ortho_lambda=args.ortho_lambda,
         output_dir="./cola_deberta_lora",
@@ -260,17 +260,16 @@ elif args.method == "MyLoRA":
         train_dataset=transformed_ds["train"],
         eval_dataset=transformed_ds["validation"],
         # tokenizer=tokenizer,
-        compute_metrics=compute_metrics,  # 添加compute_metrics
+        compute_metrics=compute_metrics,  
     )
 
-# 训练模型
 trainer.train()
 
-# 评估模型
-eval_results = trainer.evaluate()
-print("评估结果:", eval_results)
 
-# 创建保存结果的目录
+eval_results = trainer.evaluate()
+print("Evaluation results:", eval_results)
+
+
 save_dir = "./training_results"
 os.makedirs(save_dir, exist_ok=True)
 results = {
@@ -282,23 +281,23 @@ results = {
     "batch_size": args.batch_size,
     "method": args.method,
     "metrics": eval_results,
-    "ortho_lambda": training_args.ortho_lambda if args.method == "MyLoRA" else None,
+    "ortho_lambda": training_args.ortho_lambda if args.method == "DisLoRA" else None,
 }
 
-# 修改保存路径，包含所有超参数信息
+
 save_path = os.path.join(
     save_dir,
     f"{model_name.replace('/', '_')}_task-{args.task}_method-{args.method}_lr-{args.lr}_r-{args.r}_alpha-{args.lora_alpha}_bs-{args.batch_size}_results.json"
 )
 with open(save_path, "w") as f:
     json.dump(results, f, indent=4)
-print(f"\n结果已保存到: {save_path}")
+print(f"\nThe results have been saved to: {save_path}")
 
-# 使用 trainer 保存模型
+#use trainer to save model
 # weights_dir = f"./weights/{model_name}_{args.task}_{args.method}"
 # trainer.save_model(weights_dir)
 # tokenizer.save_pretrained(weights_dir)
 
-# print(f"模型权重和分词器已保存到: {weights_dir}")
+# print(f"The model weights and tokenizer have been saved to: {weights_dir}")
 wandb.log({"final_results": eval_results})
 wandb.finish()

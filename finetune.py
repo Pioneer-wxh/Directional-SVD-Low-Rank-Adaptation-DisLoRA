@@ -56,7 +56,7 @@ def train(
         scaling: Union[float, str] = 1.0,
         # prefix tuning hyperparams
         num_virtual_tokens: int = 30,
-        # MyLoRA hyperparams
+        # DisLoRA hyperparams
         ortho_lambda: float = 1.0,
         # llm hyperparams
         train_on_inputs: bool = True,
@@ -187,7 +187,7 @@ def train(
 
     #model = prepare_model_for_int8_training(model, use_gradient_checkpointing=use_gradient_checkpointing)
 
-    # Load dataset to calculate warmup_steps for MyLoRA
+    # Load dataset to calculate warmup_steps for DisLoRA
     if data_path.endswith(".json"):
         data = load_dataset("json", data_files=data_path)
     else:
@@ -222,8 +222,8 @@ def train(
             task_type="CAUSAL_LM",
         )
         model = get_peft_model(model, config)
-    elif adapter_name == "mylora":
-        # Configure MyLoRA parameters
+    elif adapter_name == "DisLoRA":
+        # Configure DisLoRA parameters
         print(lora_target_modules)
         print(len(data["train"])*num_epochs // (batch_size*gradient_accumulation_steps*3))
         config = Direc_config(
@@ -237,7 +237,7 @@ def train(
             s_tsd=8,
             prefer_small_sigma=True,
         )
-        # Initialize MyLoRA model
+        # Initialize DisLoRA model
         model = Direc_Model(
             model=model,
             config=config,
@@ -256,10 +256,10 @@ def train(
         if os.path.exists(checkpoint_name):
             print(f"Restarting from {checkpoint_name}")
             adapters_weights = torch.load(checkpoint_name)
-            if adapter_name != "mylora":
+            if adapter_name != "DisLoRA":
                 model = set_peft_model_state_dict(model, adapters_weights)
             else:
-                # Load MyLoRA model weights
+                # Load DisLoRA model weights
                 model.load_state_dict(adapters_weights, strict=False)
         else:
             print(f"Checkpoint {checkpoint_name} not found")
@@ -280,8 +280,8 @@ def train(
         model.is_parallelizable = True
         model.model_parallel = True
 
-    if adapter_name == "mylora":
-        # Use MyLoRA specific training parameters and trainer
+    if adapter_name == "DisLoRA":
+        # Use DisLoRA specific training parameters and trainer
         trainer_args = Direc_TrainingArguments(
             ortho_lambda=ortho_lambda,
             output_dir=output_dir,
@@ -350,7 +350,7 @@ def train(
 
     model.config.use_cache = False
 
-    if adapter_name != "mylora":
+    if adapter_name != "DisLoRA":
         old_state_dict = model.state_dict
         model.state_dict = (
             lambda self, *_, **__: get_peft_model_state_dict(
@@ -358,7 +358,7 @@ def train(
             )
         ).__get__(model, type(model))
     else:
-        # Keep original state_dict processing for MyLoRA
+        # Keep original state_dict processing for DisLoRA
         pass
 
     if torch.__version__ >= "2" and sys.platform != "win32":
@@ -370,9 +370,9 @@ def train(
     print("Saving final PEFT adapter weights after training completion.")
     model.save_pretrained(output_dir)
 
-    # Save full model parameters only for MyLoRA
-    if adapter_name == "mylora":
-        # Only save complete model weights for MyLoRA
+    # Save full model parameters only for DisLoRA
+    if adapter_name == "DisLoRA":
+        # Only save complete model weights for DisLoRA
         model.save_module(output_dir)
 
         print(

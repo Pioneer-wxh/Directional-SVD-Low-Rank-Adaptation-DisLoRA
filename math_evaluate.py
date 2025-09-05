@@ -241,7 +241,7 @@ def parse_args():
                         required=True,
                         help='Base model to use')
     parser.add_argument('--adapter', 
-                        choices=['LoRA', 'AdapterP', 'AdapterH', 'Parallel', 'Prefix', 'mylora'],
+                        choices=['LoRA', 'AdapterP', 'AdapterH', 'Parallel', 'Prefix', 'DisLoRA'],
                         required=True,
                         help='Adapter type')
     parser.add_argument('--base_model', 
@@ -284,8 +284,8 @@ def load_model(args) -> tuple:
     # Set left padding
     tokenizer.padding_side = 'left'
     
-    # Special handling for mylora
-    if args.adapter == "mylora":
+    # Special handling for DisLoRA
+    if args.adapter == "DisLoRA":
         if device == "cuda":
             model = AutoModelForCausalLM.from_pretrained(
                 base_model,

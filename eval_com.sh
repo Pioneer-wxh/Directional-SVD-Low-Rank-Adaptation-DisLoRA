@@ -12,7 +12,7 @@ do
 
   CUDA_VISIBLE_DEVICES=$2 python commonsense_evaluate.py \
       --model Qwen2.5-7B-Instruct \
-      --adapter mylora \
+      --adapter DisLoRA \
       --dataset $dataset_name \
       --base_model 'Qwen/Qwen2.5-7B-Instruct' \
       --batch_size 10 \

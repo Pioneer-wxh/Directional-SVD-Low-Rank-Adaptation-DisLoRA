@@ -71,7 +71,7 @@ def main(
         return outputs
 
     save_file = f'experiment/{args.model}-{args.adapter}-{args.dataset}.json'
-    # 新增：递归创建父目录
+ 
     os.makedirs(os.path.dirname(save_file), exist_ok=True)
     create_dir('experiment/')
 
@@ -116,21 +116,21 @@ def main(
     print('\n')
     print('test finished')
 
-    # 计算最终准确率
+
     final_accuracy = 0
-    if current > 0: # 避免除以零
+    if current > 0:
         final_accuracy = correct / current
     print(f'Final Accuracy: {final_accuracy:.4f}')
 
-    # 将最终准确率添加到结果中
+ 
     summary = {
         "total_samples": current,
         "correct_samples": correct,
         "final_accuracy": final_accuracy
     }
-    output_data.append({"summary": summary}) # 将摘要信息作为一个特殊条目添加
+    output_data.append({"summary": summary}) 
 
-    # 保存包含最终准确率的完整结果
+
     with open(save_file, 'w+') as f:
         json.dump(output_data, f, indent=4)
 
@@ -141,7 +141,7 @@ def create_dir(dir_path):
     return
 
 
-def generate_prompt(data_point): #修改：生成提示词的模板
+def generate_prompt(data_point): 
     # sorry about the formatting disaster gotta move fast
     if data_point["input"]:
         return f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request. 
@@ -169,8 +169,8 @@ def extract_response(output: str) -> str:
     从模型输出中提取 assistant 的回答部分
     """
     try:
-        # 提取 <|im_start|>assistant\n 之后的回答，直到 <|im_end|> 或字符串结束
-        response = re.search(r'<\|im_start\|>assistant\n(.*?)(\<\|im_end\|\>|$)', output, re.DOTALL)
+
+        response = re.search(r'### Response:\s*(.*?)$', output, re.DOTALL)
         if response:
             return response.group(1).strip()
         return output.strip()
@@ -208,8 +208,8 @@ def parse_args():
     parser.add_argument('--dataset', choices=["boolq", "piqa", "social_i_qa", "hellaswag", "winogrande", "ARC-Challenge", "ARC-Easy", "openbookqa"],
                         required=True)
     parser.add_argument('--model', choices=['LLaMA-7B', "LLaMA-13B",'BLOOM-7B', 'GPT-j-6B', 'Qwen2.5-7B-Instruct', 'Qwen2.5-0.5B-Instruct'], required=True)
-    # 允许 mylora
-    parser.add_argument('--adapter', choices=['LoRA', 'AdapterP', 'AdapterH', 'Parallel', 'mylora'],
+  
+    parser.add_argument('--adapter', choices=['LoRA', 'AdapterP', 'AdapterH', 'Parallel', 'DisLoRA'],
                         required=True)
     parser.add_argument('--base_model', required=True)
     parser.add_argument('--lora_weights', required=True)
@@ -244,8 +244,8 @@ def load_model(args) -> tuple:
     tokenizer.pad_token_id = (
         0  # unk. we want this to be different from the eos token
     )
-    # 针对 mylora 特殊处理
-    if args.adapter == "mylora":
+
+    if args.adapter == "DisLoRA":
         if device == "cuda":
             model = AutoModelForCausalLM.from_pretrained(
                 base_model,
@@ -256,7 +256,7 @@ def load_model(args) -> tuple:
             )
             config = Direc_config(
                 r=16,
-                target_modules=["q_proj", "v_proj", "o_proj", "k_proj"],  # Qwen2.5 的注意力模块
+                target_modules=["q_proj", "v_proj", "o_proj", "k_proj"], 
                 lora_alpha=24,
                 lora_dropout=0.05,
                 fan_in_fan_out=False,
@@ -351,17 +351,9 @@ def load_instruction(args) -> str:
 
 
 def extract_answer(args, sentence: str) -> str:
-    """
-    从模型输出中提取答案，适配不同数据集的答案格式
-    Args:
-        args: 命令行参数，包含数据集信息
-        sentence: 模型生成的回答
 
-    Returns:
-        提取的答案字符串
-    """
     dataset = args.dataset
-    # 清理回答，去除多余空白
+
     sentence = sentence.strip()
 
     if dataset == 'boolq':

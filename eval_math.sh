@@ -1,4 +1,3 @@
-#!/bin/bash
 
 
 datasets=('AQuA')
@@ -12,7 +11,7 @@ do
 
   CUDA_VISIBLE_DEVICES=$2 python math_evaluate.py \
     --model Qwen2.5-7B-Instruct \
-    --adapter mylora \
+    --adapter DisLoRA \
     --dataset "$dataset_name" \
     --base_model 'Qwen/Qwen2.5-7B-Instruct' \
     --batch_size 5 \

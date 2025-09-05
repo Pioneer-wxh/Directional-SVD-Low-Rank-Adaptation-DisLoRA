@@ -1,4 +1,3 @@
-#!/bin/bash
 
 
 learning_rates=(3e-4)
@@ -17,7 +16,7 @@ NUM_EPOCHS=1
 CUTOFF_LEN=256
 VAL_SET_SIZE=120
 USE_GRADIENT_CHECKPOINTING=False
-ADAPTER_NAME=mylora
+ADAPTER_NAME=dislora
 TARGET_MODULES='[q_proj,v_proj,k_proj,o_proj]'
 WANDB_PROJECT='llm-adapters-math'
 WANDB_WATCH='gradients'
@@ -38,7 +37,7 @@ for lr in "${learning_rates[@]}"; do
       echo "Output directory: ${output_dir}"
       echo "Wandb run name: ${wandb_run_name}"
 
-      deepspeed --num_gpus=3 finetune_MyLoRA.py \
+      deepspeed --num_gpus=3 finetune.py \
         --base_model "${BASE_MODEL}" \
         --data_path "${DATA_PATH}" \
         --output_dir "${output_dir}" \

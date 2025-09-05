@@ -24,8 +24,9 @@ bash run.sh
 ```
 you may need to change some arguments
 ### Eval
+for example:
 ```bash
-bash eval_com.sh
+bash eval_com.sh arg1  arg2
 ```
 
 
